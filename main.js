@@ -6,7 +6,7 @@ const imageValid = require('valid-jpeg');
 const axios = require('axios');
 const FormData = require('form-data');
 
-require('dotenv').config();
+//require('dotenv').config();
 
 const app = express();
 
