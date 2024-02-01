@@ -17,7 +17,7 @@ WORKDIR /app
 COPY . /app
 
 RUN mkdir -p /app/images && chown -R node:node /app
-
+RUN npm install
 
 EXPOSE 3000
 
