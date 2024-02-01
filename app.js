@@ -15,9 +15,6 @@ const streamPipeline = promisify(pipeline);
     await page.setRequestInterception(true);
     
     
-    const responses = [];
-
-  // Listen for network requests
   page.on('request', (request) => {
     request.continue();
   });
