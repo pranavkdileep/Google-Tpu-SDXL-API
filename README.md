@@ -21,12 +21,12 @@ An Unofficial Api For Googles SDXL TPU v5 PlayGround On HuggingFace
 
 ## Screenshots
 
-![App Screenshot](https://via.placeholder.com/468x300?text=App+Screenshot+Here)
+![App Screenshot](https://github.com/pranavkdileep/Google-Tpu-SDXL-API/blob/main/docs/Screenshot%20from%202024-02-01%2021-48-45.png?raw=true)
 
 
 ## Installation
 
-Install my-project with npm
+Install my-project with Docker
 
 ```bash
   git clone https://github.com/pranavkdileep/Google-Tpu-SDXL-API
