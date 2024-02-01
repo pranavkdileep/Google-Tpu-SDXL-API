@@ -38,7 +38,7 @@ async function genimage(prompt, negativePrompt) {
             fs.writeFileSync("images/" + filename, await response.buffer());
         }
     });
-
+    try{
     await page.goto('https://google-sdxl.hf.space');
     await page.setViewport({ width: 1480, height: 1100 });
     await page.waitForSelector('input[placeholder="Enter your prompt"]');
@@ -56,6 +56,10 @@ async function genimage(prompt, negativePrompt) {
     await new Promise(r => setTimeout(r, 10000));
     await page.screenshot({ path: 'example.png' });
     await browser.close();
+    }catch(e){
+        console.log(e);
+    }
+    
 
     return new Promise((resolve) => {
         imageValid.isValid("images/" + filename, (err, valid) => {
