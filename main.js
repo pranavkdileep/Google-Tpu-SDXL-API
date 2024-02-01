@@ -53,7 +53,7 @@ async function genimage(prompt, negativePrompt) {
     await new Promise(r => setTimeout(r, 10000));
     await page.waitForSelector('#gallery > div.grid-wrap.svelte-vg7mqq.fixed-height > div > div > button');
     await page.click('#gallery > div.grid-wrap.svelte-vg7mqq.fixed-height > div > div > button');
-    await new Promise(r => setTimeout(r, 10000));
+    await new Promise(r => setTimeout(r, 5000));
     await page.screenshot({ path: 'example.png' });
     await browser.close();
     }catch(e){
