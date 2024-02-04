@@ -6,8 +6,6 @@ const imageValid = require('valid-jpeg');
 const axios = require('axios');
 const FormData = require('form-data');
 
-//require('dotenv').config();
-
 const app = express();
 
 app.use(bodyParser.json());
@@ -38,28 +36,27 @@ async function genimage(prompt, negativePrompt) {
             fs.writeFileSync("images/" + filename, await response.buffer());
         }
     });
-    try{
-    await page.goto('https://google-sdxl.hf.space');
-    await page.setViewport({ width: 1480, height: 1100 });
-    await page.waitForSelector('input[placeholder="Enter your prompt"]');
-    await page.type('input[placeholder="Enter your prompt"]', prompt);
-    await new Promise(r => setTimeout(r, 3000));
-    await page.click('#component-11 > button');
-    await page.waitForSelector('input[placeholder="Enter a negative prompt"]');
-    await page.type('input[placeholder="Enter a negative prompt"]', negativePrompt);
-    await page.screenshot({ path: 'examplebutton.png' });
-    await page.waitForSelector('button[id="gen-button"]');
-    await page.click('button[id="gen-button"]');
-    await new Promise(r => setTimeout(r, 10000));
-    await page.waitForSelector('#gallery > div.grid-wrap.svelte-vg7mqq.fixed-height > div > div > button');
-    await page.click('#gallery > div.grid-wrap.svelte-vg7mqq.fixed-height > div > div > button');
-    await new Promise(r => setTimeout(r, 5000));
-    await page.screenshot({ path: 'example.png' });
-    await browser.close();
-    }catch(e){
+    try {
+        await page.goto('https://google-sdxl.hf.space');
+        await page.setViewport({ width: 1480, height: 1100 });
+        await page.waitForSelector('input[placeholder="Enter your prompt"]');
+        await page.type('input[placeholder="Enter your prompt"]', prompt);
+        await new Promise(r => setTimeout(r, 3000));
+        await page.click('#component-11 > button');
+        await page.waitForSelector('input[placeholder="Enter a negative prompt"]');
+        await page.type('input[placeholder="Enter a negative prompt"]', negativePrompt);
+        await page.screenshot({ path: 'examplebutton.png' });
+        await page.waitForSelector('button[id="gen-button"]');
+        await page.click('button[id="gen-button"]');
+        await new Promise(r => setTimeout(r, 10000));
+        await page.waitForSelector('#gallery > div.grid-wrap.svelte-vg7mqq.fixed-height > div > div > button');
+        await page.click('#gallery > div.grid-wrap.svelte-vg7mqq.fixed-height > div > div > button');
+        await new Promise(r => setTimeout(r, 5000));
+        await page.screenshot({ path: 'example.png' });
+        await browser.close();
+    } catch (e) {
         console.log(e);
     }
-    
 
     return new Promise((resolve) => {
         imageValid.isValid("images/" + filename, (err, valid) => {
@@ -73,18 +70,18 @@ async function genimage(prompt, negativePrompt) {
                 let form = new FormData();
                 form.append('image', fs.createReadStream(filePath));
                 axios.post(`https://api.imgbb.com/1/upload?expiration=600&key=${api_key}`, form, {
-                    headers: form.getHeaders()
-                })
-                .then(response => {
-                    console.log(response.data);
-                    let data = JSON.stringify(response.data);
-                    let image_url = JSON.parse(data).data.url;
-                    console.log(image_url);
-                    resolve(JSON.stringify({ valid: true, ImageUrl: image_url }));
-                })
-                .catch(error => {
-                    resolve(JSON.stringify({ valid: false, error: error }));
-                });
+                        headers: form.getHeaders()
+                    })
+                    .then(response => {
+                        console.log(response.data);
+                        let data = JSON.stringify(response.data);
+                        let image_url = JSON.parse(data).data.url;
+                        console.log(image_url);
+                        resolve(JSON.stringify({ valid: true, ImageUrl: image_url }));
+                    })
+                    .catch(error => {
+                        resolve(JSON.stringify({ valid: false, error: error }));
+                    });
             } else {
                 resolve(JSON.stringify({ valid: false, error: "invalid image" }));
             }
