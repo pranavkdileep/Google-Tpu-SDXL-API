@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const axios = require('axios');
 const WebSocket = require('ws');
+const formdata = require('form-data');
 
 require('dotenv').config();
 
@@ -10,11 +11,36 @@ const url = 'wss://google-sdxl.hf.space/queue/join';
 
 app.use(express.json());
 
+app.get('/', (req, res) => {
+    res.send('Hello World!');
+});
+
 app.post('/generate', async (req, res) => {
-    const { prompt, negativePrompt } = req.body;
-    const Json = await genimage(prompt, negativePrompt);
+    const { prompt, negativePrompt,guidancescale,style } = req.body;
+    const Json = await genimage(prompt, negativePrompt,guidancescale,style);
     console.log(Json);
     res.send(Json);
+});
+
+app.post('/generate/stream', async (req, res) => {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Cache-Control', 'no-cache');
+    
+    const { prompt, negativePrompt, guidancescale, style } = req.body;
+    
+    genimagestream(prompt, negativePrompt, guidancescale, style, (data) => {
+        try {
+            res.write(JSON.stringify(data) + '\n');
+            if (data.success === true || data.success === false) {
+                res.end();
+            }
+        } catch (error) {
+            console.error('Error writing to stream:', error);
+            res.end();
+        }
+    });
 });
 
 async function genimage(prompt, negativePrompt = "", guidancescale = 7.5, style = "(No style)") {
@@ -35,7 +61,7 @@ async function genimage(prompt, negativePrompt = "", guidancescale = 7.5, style 
             if (message.msg === 'queue_full') {
                 console.log('Queue full');
                 ws.close();
-                reject('Queue full');
+                resolve({success: false,data:'Queue full'});
             }
             if (message.msg === 'send_data') {
                 const data = { "data": [prompt, negativePrompt, guidancescale, style], "event_data": null, "fn_index": 3, "session_hash": sesionhash };
@@ -47,10 +73,11 @@ async function genimage(prompt, negativePrompt = "", guidancescale = 7.5, style 
                     const images = message.output.data[0];
                     images.forEach((image, index) => {
                         const filePath = `./images/image_${index}.jpg`;
-                        //saveBase64Image(image, filePath);
+                        saveBase64Image(image, filePath);
                     });
+                    resolve({success: true, data: images});
                 }else{
-                    reject(message.output.error);
+                    resolve({success: false,data:message.output.error});
                 }
             }
         });
@@ -61,8 +88,69 @@ async function genimage(prompt, negativePrompt = "", guidancescale = 7.5, style 
 
         ws.on('error', (err) => {
             console.error('WebSocket error:', err);
+            resolve({success: false,data:err});
         });
     });
+}
+
+async function genimagestream(prompt, negativePrompt = "", guidancescale = 7.5, style = "(No style)",senddata) {
+    const sesionhash = generateSessionHash();
+        const ws = new WebSocket(url);
+        ws.on('open', () => {
+            console.log('Connected to WebSocket server');
+            senddata('Image generation started');
+        });
+
+        ws.on('message', async (data) => {
+            console.log('Received:', data.toString());
+            const message = JSON.parse(data.toString());
+            if (message.msg === 'send_hash') {
+                ws.send(JSON.stringify({ "fn_index": 3, "session_hash": sesionhash }));
+                console.log({ "fn_index": 3, "session_hash": sesionhash })
+            }
+            if (message.msg === 'queue_full') {
+                console.log('Queue full');
+                ws.close();
+                senddata({success: false,data:'Queue full'});
+            }
+            if (message.msg === 'send_data') {
+                const data = { "data": [prompt, negativePrompt, guidancescale, style], "event_data": null, "fn_index": 3, "session_hash": sesionhash };
+                ws.send(JSON.stringify(data));
+                console.log(data);
+            }
+            if (message.msg === 'process_completed') {
+                if(message.success){
+                    const images = message.output.data[0];
+                    const imageurls = [];
+                    for (let index = 0; index < images.length; index++) {
+                        const image = images[index];
+                        const url = await hostimage(image);
+                        imageurls.push(url);
+                    }
+                    // resolve({success: true, data: images});
+                    senddata({success: true,urls:imageurls, data: imageurls});
+                }else{
+                    // resolve({success: false,data:message.output.error});
+                    senddata({success: false,data:message.output.error});
+                }
+            }
+            if(message.msg === 'estimation'){
+                senddata(`Ranking: ${message.rank}`);
+            }
+            if(message.msg === 'process_starts'){
+                senddata(`Image generation Process started`);
+            }
+        });
+
+        ws.on('close', () => {
+            console.log('WebSocket connection closed');
+        });
+
+        ws.on('error', (err) => {
+            console.error('WebSocket error:', err);
+            // resolve({success: false,data:err});
+            senddata({success: false,data:err});
+        });
 }
 
 function generateSessionHash(length = 10) {
@@ -86,9 +174,37 @@ function saveBase64Image(base64Data, filePath) {
     });
 }
 
+async function hostimage(base64Data) {
+    // Base64 string might already be clean or might need cleaning
+    const base64String = base64Data.includes('data:image')
+        ? base64Data.replace(/^data:image\/[a-z]+;base64,/, '')
+        : base64Data;
+        
+    try {
+        const urlpost = `https://api.imgbb.com/1/upload?expiration=600&key=${process.env.IMGBB_API_KEY}`;
+        const form = new formdata();
+        form.append('image', base64String); // Send the base64 string directly, not as buffer
+        
+        const upload = await axios.post(urlpost, form, {
+            headers: {
+                'Content-Type': `multipart/form-data; boundary=${form._boundary}`
+            }
+        });
+        
+        console.log('Image uploaded successfully');
+        return upload.data.data.url;
+    } catch(err) {
+        console.error('Error uploading image:', err.message);
+        if (err.response) {
+            console.error('Response data:', err.response.data);
+        }
+        return null;
+    }
+}
 
-// const port = 3000;
-// app.listen(port, () => console.log(`Server listening on port ${port}`));
 
 
-genimage("A serious capybara at work, wearing a suit").then(console.log).catch(console.error);
+
+const port = 3000;
+app.listen(port, () => console.log(`Server listening on port ${port}`));
+
