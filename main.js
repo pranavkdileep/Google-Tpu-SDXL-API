@@ -111,7 +111,9 @@ async function genimagestream(prompt, negativePrompt = "", guidancescale = 7.5, 
             if (message.msg === 'queue_full') {
                 console.log('Queue full');
                 ws.close();
-                senddata({success: false,data:'Queue full'});
+                senddata('Queue full Retrying...');
+                genimagestream(prompt, negativePrompt, guidancescale, style,senddata);
+                return;
             }
             if (message.msg === 'send_data') {
                 const data = { "data": [prompt, negativePrompt, guidancescale, style], "event_data": null, "fn_index": 3, "session_hash": sesionhash };
