@@ -130,7 +130,7 @@ async function genimagestream(prompt, negativePrompt = "", guidancescale = 7.5, 
                         imageurls.push(url);
                     }
                     // resolve({success: true, data: images});
-                    senddata({success: true,urls:imageurls, data: imageurls});
+                    senddata({success: true,urls:imageurls, data: images});
                 }else{
                     // resolve({success: false,data:message.output.error});
                     senddata({success: false,data:message.output.error});
